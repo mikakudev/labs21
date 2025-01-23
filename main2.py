@@ -21,7 +21,7 @@ class Equipment:
         self.cost = cost
 
     def __str__(self):
-        return 'Номер = {0} название = {1} модель = {2} Дата покупки = {3}цена = {4}'.format(self.inventory_number,
+        return 'Номер = {0} название = {1} модель = {2} Дата покупки = {3} цена = {4}'.format(self.inventory_number,
                                                                                              self.name,
                                                                                              self.model,
                                                                                              self.purchase_date,
@@ -30,7 +30,7 @@ class Equipment:
 
 #класс отдела
 class Departament:
-    def __init__(self,dep_number,full_name,short_name,boss):
+    def __init__(self,dep_number = 0 ,full_name = "Подлазделение",short_name = "подразделение кратно",boss = "руководитель"):
         self.dep_number = dep_number
         self.full_name = full_name
         self.short_name = short_name
