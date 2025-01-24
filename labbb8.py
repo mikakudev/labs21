@@ -161,6 +161,16 @@ class Company:
                     return
         print(f"Оборудование с инвентарным номером {inventory_number} не найдено.")
 
+    def transfer_equipment(self, inventory_number, new_department, new_room, new_responsible):
+        # Находим оборудование
+        equipment = self.find_equipment(inventory_number)
+        if equipment:
+            # Передаем оборудование в новый отдел, комнату и назначаем нового ответственного
+            equipment.transfer(new_department=new_department, new_responsible=new_responsible, new_room=new_room)
+            print(f"Оборудование с инвентарным номером {inventory_number} успешно передано.")
+        else:
+            print(f"Оборудование с инвентарным номером {inventory_number} не найдено.")
+
     def update_equipment(self, inventory_number, name=None, model=None, purchase_date=None, cost=None):
         equipment = self.find_equipment(inventory_number)
         if equipment:
@@ -263,10 +273,7 @@ def main():
                 new_responsible = next((p for p in new_department.responsible_persons if p["ФИО"] == responsible_name), None)
 
                 if new_room and new_responsible:
-                    company.delete_equipment(inventory_number)
-                    equipment = Equipment()
-                    equipment.transfer(new_department, new_responsible, new_room)
-                    new_room.add_equipment(equipment, new_department, new_responsible)
+                    company.transfer_equipment(inventory_number, new_department, new_room, new_responsible)
                     print("Оборудование успешно передано.")
                 else:
                     print("Комната или материально ответственное лицо не найдены.")
