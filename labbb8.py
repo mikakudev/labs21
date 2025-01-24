@@ -8,25 +8,6 @@ def _next_number():
     _next += 1
     return _next
 
-def time_execution(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"Время выполнения {func.__name__}: {end_time - start_time:.4f} секунд")
-        return result
-    return wrapper
-
-def count_calls(func):
-    func.call_count = 0
-
-    def wrapper(*args, **kwargs):
-        func.call_count += 1
-        print(f"{func.__name__} вызвано {func.call_count} раз(а)")
-        return func(*args, **kwargs)
-
-    return wrapper
-
 class Equipment:
     def __init__(self, name="по умолчанию", model="по умолчанию", purchase_date="0000-00-00", cost=0.00):
         self.__inventory_number = _next_number()
@@ -63,8 +44,6 @@ class Equipment:
     def transfer_history(self):
         return self.__transfer_history
 
-    @count_calls
-    @time_execution
     def transfer(self, new_department=None, new_responsible=None, new_room=None):
         transfer_record = {
             "дата": datetime.now(),
@@ -77,6 +56,16 @@ class Equipment:
         self.__current_responsible = new_responsible
         self.__current_room = new_room
 
+    def update_equipment(self, name=None, model=None, purchase_date=None, cost=None):
+        if name:
+            self.__name = name
+        if model:
+            self.__model = model
+        if purchase_date:
+            self.__purchase_date = purchase_date
+        if cost:
+            self.__cost = cost
+
     def __repr__(self):
         return f"{self.name} (№{self.inventory_number}, Модель: {self.model})"
 
@@ -86,11 +75,20 @@ class Room:
         self.area = area
         self.equipment = []
 
-    @count_calls
-    @time_execution
     def add_equipment(self, equipment, department, responsible):
         self.equipment.append(equipment)
         equipment.transfer(new_department=department, new_responsible=responsible, new_room=self)
+
+    def remove_equipment(self, inventory_number):
+        equipment_to_remove = next((e for e in self.equipment if e.inventory_number == inventory_number), None)
+        if equipment_to_remove:
+            self.equipment.remove(equipment_to_remove)
+            print(f"Оборудование с инвентарным номером {inventory_number} удалено.")
+        else:
+            print(f"Оборудование с инвентарным номером {inventory_number} не найдено.")
+
+    def find_equipment(self, inventory_number):
+        return next((e for e in self.equipment if e.inventory_number == inventory_number), None)
 
     def __repr__(self):
         return f"Комната {self.number} ({self.area} кв.м) с оборудованием: {self.equipment}"
@@ -104,26 +102,18 @@ class Departament:
         self.responsible_persons = []
         self.rooms = []
 
-    @count_calls
-    @time_execution
     def add_room(self, room):
         self.rooms.append(room)
 
-    @count_calls
-    @time_execution
     def add_responsible_person(self, person):
         self.responsible_persons.append(person)
 
-    @count_calls
-    @time_execution
     def list_equipment(self):
         equipment_list = []
         for room in self.rooms:
             equipment_list.extend(room.equipment)
         return equipment_list
 
-    @count_calls
-    @time_execution
     def list_rooms(self):
         return self.rooms
 
@@ -135,13 +125,9 @@ class Company:
         self.__company_name = name
         self.departments = []
 
-    @count_calls
-    @time_execution
     def add_department(self, department):
         self.departments.append(department)
 
-    @count_calls
-    @time_execution
     def list_all_equipment(self):
         all_equipment = []
         for department in self.departments:
@@ -156,6 +142,32 @@ class Company:
                     if equipment._Equipment__current_responsible and equipment._Equipment__current_responsible["ФИО"] == responsible_name:
                         result.append(equipment)
         return result
+
+    def find_equipment(self, inventory_number):
+        for department in self.departments:
+            for room in department.rooms:
+                equipment = room.find_equipment(inventory_number)
+                if equipment:
+                    return equipment
+        return None
+
+    def delete_equipment(self, inventory_number):
+        for department in self.departments:
+            for room in department.rooms:
+                equipment = self.find_equipment(inventory_number)
+                if equipment:
+                    room.remove_equipment(inventory_number)
+                    print(f"Оборудование с инвентарным номером {inventory_number} удалено из системы.")
+                    return
+        print(f"Оборудование с инвентарным номером {inventory_number} не найдено.")
+
+    def update_equipment(self, inventory_number, name=None, model=None, purchase_date=None, cost=None):
+        equipment = self.find_equipment(inventory_number)
+        if equipment:
+            equipment.update_equipment(name=name, model=model, purchase_date=purchase_date, cost=cost)
+            print(f"Оборудование с инвентарным номером {inventory_number} обновлено.")
+        else:
+            print(f"Оборудование с инвентарным номером {inventory_number} не найдено.")
 
     def __repr__(self):
         return f"Компания: {self.__company_name}, Отделов: {len(self.departments)}"
@@ -177,7 +189,9 @@ def main():
         print("6. Вывести список оборудования в компании")
         print("7. Вывести список помещений отдела")
         print("8. Показать оборудование по ответственному лицу")
-        print("9. Выйти")
+        print("9. Удалить оборудование")
+        print("10. Обновить информацию об оборудовании")
+        print("11. Выйти")
 
         choice = input("Введите номер действия: ")
 
@@ -249,22 +263,11 @@ def main():
                 new_responsible = next((p for p in new_department.responsible_persons if p["ФИО"] == responsible_name), None)
 
                 if new_room and new_responsible:
-                    equipment = None
-                    for d in company.departments:
-                        for r in d.rooms:
-                            equipment = next((e for e in r.equipment if e.inventory_number == inventory_number), None)
-                            if equipment:
-                                r.equipment.remove(equipment)
-                                break
-                        if equipment:
-                            break
-
-                    if equipment:
-                        equipment.transfer(new_department=new_department, new_responsible=new_responsible, new_room=new_room)
-                        new_room.add_equipment(equipment, new_department, new_responsible)
-                        print("Оборудование успешно передано.")
-                    else:
-                        print("Оборудование с таким инвентарным номером не найдено.")
+                    company.delete_equipment(inventory_number)
+                    equipment = Equipment()
+                    equipment.transfer(new_department, new_responsible, new_room)
+                    new_room.add_equipment(equipment, new_department, new_responsible)
+                    print("Оборудование успешно передано.")
                 else:
                     print("Комната или материально ответственное лицо не найдены.")
             else:
@@ -295,12 +298,31 @@ def main():
                     print(equipment)
             else:
                 print("Указанное лицо не имеет закрепленного оборудования.")
+
         elif choice == "9":
-          print("Выход из программы. До свидания!")
-          break
+            inventory_number = int(input("Введите инвентарный номер оборудования: "))
+            company.delete_equipment(inventory_number)
+
+        elif choice == "10":
+            inventory_number = int(input("Введите инвентарный номер оборудования: "))
+            name = input("Введите новое название оборудования (нажмите Enter, чтобы оставить без изменений): ")
+            model = input("Введите новую модель оборудования (нажмите Enter, чтобы оставить без изменений): ")
+            purchase_date = input("Введите новую дату покупки (гггг-мм-дд, нажмите Enter, чтобы оставить без изменений): ")
+            cost = input("Введите новую стоимость оборудования (нажмите Enter, чтобы оставить без изменений): ")
+            company.update_equipment(
+                inventory_number,
+                name=name or None,
+                model=model or None,
+                purchase_date=purchase_date or None,
+                cost=float(cost) if cost else None
+            )
+
+        elif choice == "11":
+            print("Выход из программы. До свидания!")
+            break
 
         else:
-          print("Неверный выбор. Попробуйте снова.")
+            print("Неверный выбор. Попробуйте снова.")
 
 if __name__ == "__main__":
     main()
